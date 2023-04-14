@@ -1,0 +1,78 @@
+version: '3.4'
+
+services:
+  rabbitmq:
+    container_name: rabbitMQ
+    image: rabbitmq:3.10-rc-management-alpine
+    ports:
+      # AMQP protocol port
+      - "5672:5672"
+      # HTTP management UI
+      - "15672:15672"
+
+  database:
+    container_name: mongoDB
+    image: mongo
+    ports: [ "27017:27017" ]
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: "root"
+      MONGO_INITDB_ROOT_PASSWORD: "1234"
+
+  auth:
+    container_name: auth_service
+    build:
+      context: ./auth
+      args:
+        NODE_ENV: "development"
+      target: dev
+    ports: [ "7070:7070" ]
+    volumes: [ ./auth:/app/ ]
+    environment:
+      PORT: "7070"
+      SERVICE: "auth"
+      JWT_SECRET: "jwt-screte"
+      DATABASE_USER: "root"
+      DATABASE_PASSWORD: "1234"
+    env_file: [ ./auth/.env ]
+    depends_on: [ database, rabbitmq ]
+
+  products:
+    container_name: product_service
+    build:
+      context: ./products
+      args:
+        NODE_ENV: "development"
+      target: dev
+    ports: [ "8080:8080" ]
+    volumes: [ ./products:/app/ ]
+    environment:
+      PORT: "8080"
+      SERVICE: "products"
+      RABBITMQ_URL: "amqp://rabbitmq:5672"
+      DATABASE_USER: "root"
+      DATABASE_PASSWORD: "1234"
+      JWT_SECRET: "jwt-screte"
+    env_file: [ ./products/.env ]
+    depends_on: [ database, rabbitmq ]
+
+  orders:
+    container_name: order_service
+    build:
+      context: ./orders
+      args:
+        NODE_ENV: "development"
+      target: dev
+    ports: [ "9090:9090" ]
+    volumes: [ ./orders:/app/ ]
+    environment:
+      PORT: "9090"
+      SERVICE: "orders"
+      RABBITMQ_URL: "amqp://rabbitmq:5672"
+      DATABASE_USER: "root"
+      DATABASE_PASSWORD: "1234"
+      JWT_SECRET: "jwt-screte"
+    env_file: [ ./orders/.env ]
+    depends_on: [ database, rabbitmq ]
+
+volumes:
+  data:
